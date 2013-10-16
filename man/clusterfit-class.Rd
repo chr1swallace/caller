@@ -1,0 +1,24 @@
+\name{clusterfit-class}
+\alias{clusterfit-class}
+\title{clusterfit class}
+\description{
+  A clusterdef object together with data used to estimate
+  its parameters.
+}
+  \section{Cluster specific slots}{ \describe{
+
+  \item{\code{clusters}:}{clusterdef object}
+
+  \item{\code{theta}:}{theta, input data}
+
+  \item{\code{lrr}:}{LRR, input data}
+
+  \item{\code{pp}:}{matrix of posterior group
+  probabilities}
+
+  \item{\code{fit.info}:}{information about the fitting,
+  currently a numberic vector of -loglikelihood values}
+
+  } }
+
+

@@ -1,0 +1,20 @@
+Package: caller
+Title: caller
+Description: calls common CNVs from LRR and theta signals fdrom a single SNP
+Version: 0.1
+Authors@R: c(person("Chris", "Wallace", role = c("aut", "cre"),
+    email = "cew54@cam.ac.uk"))
+Depends:
+    R (>= 3.0.2)
+License: GPL
+LazyData: true
+Collate:
+    'AllClasses.R'
+    'caller-package.r'
+    'AllGenerics.R'
+    'AllMethods.R'
+    'create.R'
+    'fit.R'
+    'utilities.R'
+    'mix-betabinomial.R'
+    'mix-common.R'

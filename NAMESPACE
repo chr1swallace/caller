@@ -1,0 +1,4 @@
+export(beta.em)
+export(clusterdef.ncopies)
+exportClasses(clusterdef)
+exportClasses(clusterfit)

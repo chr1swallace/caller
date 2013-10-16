@@ -1,0 +1,15 @@
+\name{clusterdef-class}
+\alias{clusterdef-class}
+\title{clusterdef class}
+\description{
+  Defines parameters used to describe location and spread
+  of clusters.
+}
+\details{
+  The definition is split into two parts.  This separation
+  allows us to define n clusters which depend on 4xm
+  parameters (m is less than n), so that clusters with
+  equal total copy number can share the same mean R, for
+  example.
+}
+
