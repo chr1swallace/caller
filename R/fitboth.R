@@ -1,6 +1,6 @@
 ##' Fit a beta mixture distribution to theta, assuming LRR follows an established Gaussian mixture distribution
 ##'
-##' @title beta.em
+##' @title fit.em
 ##' @param df.in clusterdef object
 ##' @param theta theta
 ##' @param lrr LRR
@@ -12,8 +12,7 @@
 ##' @return a clusterfit object
 ##' @export
 ##' @author Chris Wallace
-beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=TRUE,maxit=1e4, eps=1e-2, use.deriv=FALSE) {
-  library(RColorBrewer)
+both.em <- function(df.in,theta,lrr,tol=1e-2,verbose=TRUE,maxit=1e4, eps=1e-2, use.deriv=TRUE, max.lrr=FALSE) {
   mx <- NULL
   p <- df.in@pi
   ngroup <- length(p)
@@ -27,48 +26,27 @@ beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=TRUE,maxit=1e4, eps=1e-2, u
   ## probabilities of group membership
   px <- matrix(dfsumm$pi,length(theta),ngroup,byrow=TRUE)
   ## parameter vector
-  pars <- c(a=df.in@theta.a[ df.in@theta.opt ], b=df.in@theta.b[ df.in@theta.opt ])
+  pars <- c(mu=df.in@R.mean, sigma=df.in@R.sd,
+            a=df.in@theta.a[ df.in@theta.opt ], b=df.in@theta.b[ df.in@theta.opt ])
   
-  
-  ## define lots of functions within this function to use dfsumm environment  
-  ## vectors of a, b
-  abvec <- function(pars,index=TRUE) {
-    a <- pars[grep("a",names(pars))]
-    b <- pars[grep("b",names(pars))]
-     if(index) {
-      avec <- a[dfsumm$theta.index]
-      bvec <- b[dfsumm$theta.index]
-      avec[ dfsumm$copies==0 ] <- bvec[ dfsumm$copies==0 ] <- 1
-    }
-    tm <- beta.mn(avec,bvec)
-    ts <- beta.sd(avec,bvec) 
-    return(list(a=avec,b=bvec,mean=tm,sd=ts))
-  }
+  ## define lots of functions within this function to use theta, lrr in this environment  
   
   ## likelihood for a single group
-  lhood.single <- function(avec, bvec, theta, lrr, pi, i) {
-    if(i>length(avec) || i>length(bvec))
-      stop("cannot estimate likelihood for more than",length(avec),"groups")
-    dbeta(theta,shape1=avec[i],shape2=bvec[i]) * dnorm(lrr,mean=dfsumm$R.mean[i],sd=dfsumm$R.sd[i]) * pi
+  lhood.single <- function(mu, sigma, a, b, pi) {
+    exp(dbeta(theta,shape1=a,shape2=b,log=TRUE) + dnorm(lrr,mean=mu,sd=sigma,log=TRUE) + log(pi))
   }
   
-  order.fail <- function(pars) {
-    ab <- abvec(pars, index=FALSE)
-    if(!identical(order(ab$mean),seq_along(ab$mean)))
-      return(TRUE)
-    return(FALSE)
-  }
-    
+  
   ## likelihood function to be maximized
-  lhood <- function(pars, theta, lrr, px, sumlog=TRUE) {
-    if(order.fail(pars))
+  lhood <- function(pars, px, sumlog=TRUE) {
+    if(pars.fail(pars))
       return(NA)
-    ab <- abvec(pars)    
-    ngroup <- length(ab$a)
-    e <- rep(0,length(theta))
+    parv <- parvec(pars)
+    ngroup <- length(parv$a)
+    e <- numeric(length(theta))
     for(i in 1:ngroup) {
       ##    cat(i, (dbeta(theta,a[i],b[i]) * dnorm(lrr,mu[i],sigma[i]) * p[,i])[wh], "\n")
-      e <- e + lhood.single(ab$a, ab$b, theta, lrr, px[,i], i)
+      e <- e + lhood.single(mu=parv$mu[i], sigma=parv$sigma[i], a=parv$a[i], b=parv$b[i], pi=px[,i])
     }
     if(!any(is.na(e)) & any(e==0)) {
       wh <- which(e==0)
@@ -85,42 +63,39 @@ beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=TRUE,maxit=1e4, eps=1e-2, u
     }
   }
   
-  ## TODO: use logs
-  dab.single <- function(a, b, theta, lrr, pi, inf.value=1e400) {
-    B <- lbeta(a,b)
-    C <- dnorm(lrr,mean=dfsumm$R.mean[i],sd=dfsumm$R.sd[i],log=TRUE) +
-      log(pi) + (b - 1)*log(1-theta) + (a-1)*log(theta) - B
+  d.single <- function(mu, sigma, a, b, pi, inf.value=1e400) {
+#    B <- lbeta(a,b)
+    C <- dnorm(lrr,mean=mu,sd=sigma,log=TRUE) + dbeta(theta, a, b, log=TRUE) + log(pi)
+#      log(pi) + (b - 1)*log(1-theta) + (a-1)*log(theta) - B
     tmp <- list(a= exp(C) * (log(theta) - digamma(a) + digamma(a+b)),
-                b= exp(C) * (log(1-theta) - digamma(b) + digamma(a+b)))
-##     tmp <- lapply(tmp,function(v) {
-##       wh <- which(is.infinite(v))
-##       if(length(wh))
-##         v[wh] <- sign(v)[wh] * inf.value
-##       return(v) # we are minimising -loglikelihood
-##     })
+                b= exp(C) * (log(1-theta) - digamma(b) + digamma(a+b)),
+                mu=exp(C) * (lrr-mu)/sigma^2,
+                sigma=exp(C) * ((lrr-mu)^2/sigma^2 - 1))
     return(tmp)
   }
   
-  deriv <- function(pars, theta, lrr, px) {
-    if(any(pars<0)) # a > 0, b > 0
-      return(NA)
-    ab <- abvec(pars)    
-    ngroup <- length(ab$a)
+  deriv <- function(pars, px) {
+    parv <- parvec(pars)    
+    ngroup <- length(parv$a)
     deriv.a <- deriv.b <- numeric(length(pars)/2)
-    ea <- eb <- matrix(0,length(theta),length(pars)/2)
-    for(i in which(dfsumm$theta.opt)) {
+    ea <- eb <- matrix(0,length(theta),length(grep("^a",names(pars))))
+    em <- es <- matrix(0,length(theta),length(grep("mu",names(pars))))
+    for(i in 1:ngroup) {
       j <- dfsumm$theta.index[i]
-#      cat(j,i,ab$a[i], ab$b[i],"\n")
-      tmp <- dab.single(a=ab$a[i], b=ab$b[i], theta, lrr, px[,i])
-      ea[,j] <- ea[,j] + tmp$a
-      eb[,j] <- ea[,j] + tmp$b
+      k <- dfsumm$R.index[i]
+      tmp <- d.single(mu=parv$mu[i], sigma=parv$sigma[i], a=parv$a[i], b=parv$b[i], px[,i])
+      if(dfsumm$theta.opt[i]) {
+        ea[,j] <- ea[,j] + tmp$a
+        eb[,j] <- ea[,j] + tmp$b
+      }
+      em[,k] <- em[,k] + tmp$mu
+      es[,k] <- es[,k] + tmp$sigma
     }
-    L <- lhood(pars, theta, lrr, px, sumlog=FALSE)
-    ret <- c(colSums(ea/L),colSums(eb/L))
+    L <- lhood(pars, px, sumlog=FALSE)
+    ret <- c(colSums(em/L),colSums(es/L),colSums(ea/L),colSums(eb/L))
     ret[ abs(ret)>1e100 ] <- sign(ret)[ abs(ret) > 1e100 ] * 1e100
     return(ret)
   }
-                                        # deriv(pars,theta,lrr,px)
   
   ## now start the work
   
@@ -134,13 +109,14 @@ beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=TRUE,maxit=1e4, eps=1e-2, u
     
     nit <- nit+1    
     ab <- abvec(pars)    
+    ms <- msvec(pars)    
     
     ## E step
     if(ngroup>1) { # px=1 for ngroup==1
       px.old <- px
       p <- colMeans(px)
       for(i in 1:ngroup) {
-        px[,i] <- lhood.single(ab$a, ab$b, theta, lrr, p[i], i)
+        px[,i] <- lhood.single(mu=parv$mu[i], sigma=parv$sigma[i], a=parv$a[i], b=parv$b[i], pi=p[i])
       }
       px <- px/rowSums(px) ## normalise
       if(any(is.nan(px)))
@@ -156,16 +132,14 @@ beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=TRUE,maxit=1e4, eps=1e-2, u
       mx <- optim(par=pars,
                       fn=lhood,
                       gr=deriv,
-                      theta=theta,lrr=lrr,px=px,
-                      method="BFGS")
-      print(mx)
+                      px=px,
+                      method="BFGS",
+                  control=list(trace=verbose))
     } else {
-      mx <- try(optim(par=pars,
+      mx <- optim(par=pars,
                       fn=lhood,
-                      theta=theta,lrr=lrr,px=px))
-    }
-    if(inherits(mx,"try-error")) {
-      stop("optim failed")
+                      px=px,
+                      control=list(trace=verbose))
     }
     value[i] <- mx$value
     pars <- mx$par
