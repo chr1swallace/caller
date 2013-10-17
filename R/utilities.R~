@@ -1,8 +1,0 @@
-beta.sd <- function(a,b) {                                        #  cat(a,b,"\n")
-  sqrt(a*b/((a+b)^2 * (a+b+1)))
-}
-
-
-beta.mn <- function(a,b) {
-  a/(a+b)
-}

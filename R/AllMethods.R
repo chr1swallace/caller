@@ -19,6 +19,13 @@ setMethod("summary","clusterdef",
                             )
           })
 
+setMethod("summary","clusterfit",
+          definition=function(object) {
+            best.group <- apply(object@pp,1,which.max)
+            best.prob <- apply(object@pp,1,max)
+            data.frame(theta=object@theta,LRR=object@lrr,best.group=best.group,prob=best.prob)
+          })
+
 setMethod("show","clusterdef",
           definition=function(object) {
             cat("clusterdef object defining",length(object@a1),"clusters with 2 x",length(object@R.mean),"R parameters and 2 x",length(object@theta.a),"theta parameters.\n")
@@ -33,7 +40,28 @@ setMethod("show","clusterfit",
           })
                              
                              
-          
+setMethod("plot","clusterdef",
+          definition=function(x,y) {
+            dfsumm <- summary(x)
+            dfsumm <- within(dfsumm, {
+              theta.low <- qbeta(0.025, theta.a, theta.b)
+              theta.high <- qbeta(0.975, theta.a, theta.b)
+              R.low <- qnorm(0.025,R.mean,R.sd)
+              R.high <- qnorm(0.975,R.mean,R.sd)              
+            })
+            ggplot(dfsumm,aes(col=as.factor(1:nrow(dfsumm)))) +
+              geom_point(aes(x=theta.mean,y=R.mean)) +
+                geom_segment(aes(x=theta.low,xend=theta.high,y=R.mean,yend=R.mean),alpha=0.5,
+                             arrow=arrow(length = unit(0.1,"cm"), angle=90, ends="both")) +
+                geom_segment(aes(x=theta.mean,xend=theta.mean,y=R.low,yend=R.high),alpha=0.5,lineend="round",
+                             arrow=arrow(length = unit(0.1,"cm"), angle=90, ends="both"))
+          })
               
-    
+setMethod("plot","clusterfit",
+          definition=function(x,y) {
+            groups <- summary(x)
+            plot(x@clusters) + geom_point(data=groups, aes(x=theta,y=LRR,col=as.factor(best.group)),size=0.1)
+          })
+              
+  
               

@@ -12,15 +12,15 @@
 ##' @return a clusterfit object
 ##' @export
 ##' @author Chris Wallace
-beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=FALSE,maxit=1e4, eps=1e-2, use.deriv=FALSE) {
+beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=TRUE,maxit=1e4, eps=1e-2, use.deriv=FALSE) {
   library(RColorBrewer)
   mx <- NULL
   p <- df.in@pi
   ngroup <- length(p)
   
   ## theta \in (0,1)
-  theta[ theta<=0 ] <- eps
-  theta[ theta>=1 ] <- 1-eps
+  theta[ theta<=eps ] <- eps
+  theta[ theta>=1-eps ] <- 1-eps
   
   dfsumm <- summary(df.in)
   
@@ -76,17 +76,18 @@ beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=FALSE,maxit=1e4, eps=1e-2, 
   }
   
   ## TODO: use logs
-  dab.single <- function(a, b, theta, lrr, pi, inf.value=1e4) {
+  dab.single <- function(a, b, theta, lrr, pi, inf.value=1e400) {
     B <- lbeta(a,b)
     C <- dnorm(lrr,mean=dfsumm$R.mean[i],sd=dfsumm$R.sd[i],log=TRUE) +
-      log(pi) + (b - 1)*log(1-theta) + (a-1)*log(theta) - 2*B
-    tmp <- list(a= exp(C) * (log(theta) * exp(B) - digamma(a) + digamma(a+b)),
-                b= exp(C) * (log(1-theta) * exp(B) - digamma(a) + digamma(a+b)))
-    tmp <- lapply(tmp,function(v) {
-      wh <- which(is.infinite(v))
-      if(length(wh))
-        v[wh] <- sign(v)[wh] * inf.value
-      return(v) })
+      log(pi) + (b - 1)*log(1-theta) + (a-1)*log(theta) - B
+    tmp <- list(a= exp(C) * (log(theta) - digamma(a) + digamma(a+b)),
+                b= exp(C) * (log(1-theta) - digamma(b) + digamma(a+b)))
+##     tmp <- lapply(tmp,function(v) {
+##       wh <- which(is.infinite(v))
+##       if(length(wh))
+##         v[wh] <- sign(v)[wh] * inf.value
+##       return(v) # we are minimising -loglikelihood
+##     })
     return(tmp)
   }
   
@@ -97,16 +98,16 @@ beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=FALSE,maxit=1e4, eps=1e-2, 
     ngroup <- length(ab$a)
     deriv.a <- deriv.b <- numeric(length(pars)/2)
     ea <- eb <- matrix(0,length(theta),length(pars)/2)
-    for(j in unique(dfsumm$theta.index[ dfsumm$theta.opt ])) {
-      for(i in (1:nrow(dfsumm))[ dfsumm$theta.index==j & dfsumm$theta.opt ]) {
-        tmp <- dab.single(ab$a[i], ab$b[i], theta, lrr, px[,i])
-        ea[,j] <- ea[,j] + tmp$a
-        eb[,j] <- ea[,j] + tmp$b
-      }
+    for(i in which(dfsumm$theta.opt)) {
+      j <- dfsumm$theta.index[i]
+#      cat(j,i,ab$a[i], ab$b[i],"\n")
+      tmp <- dab.single(a=ab$a[i], b=ab$b[i], theta, lrr, px[,i])
+      ea[,j] <- ea[,j] + tmp$a
+      eb[,j] <- ea[,j] + tmp$b
     }
     L <- lhood(pars, theta, lrr, px, sumlog=FALSE)
     ret <- c(colSums(ea/L),colSums(eb/L))
-  ret[ abs(ret)>1e100 ] <- sign(ret)[ abs(ret) > 1e100 ] * 1e100
+    ret[ abs(ret)>1e100 ] <- sign(ret)[ abs(ret) > 1e100 ] * 1e100
     return(ret)
   }
                                         # deriv(pars,theta,lrr,px)
@@ -146,7 +147,7 @@ beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=FALSE,maxit=1e4, eps=1e-2, 
                       fn=lhood,
                       gr=deriv,
                       theta=theta,lrr=lrr,px=px,
-                      method="CG")
+                      method="BFGS")
       print(mx)
     } else {
       mx <- try(optim(par=pars,
@@ -158,10 +159,11 @@ beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=FALSE,maxit=1e4, eps=1e-2, 
     }
     value[i] <- mx$value
     pars <- mx$par
-    cat(nit,value[i],"\n")
-    print(pars)
+    if(verbose) {
+      cat(nit,value[i],"\n")
+      print(pars)
+    }
   }
-  print(pars)
   newa <- df.in@theta.a
   newa[ df.in@theta.opt ] <- pars[ grep("a",names(pars)) ]
   newb <- df.in@theta.b
