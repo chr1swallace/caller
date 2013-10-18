@@ -72,13 +72,14 @@ setMethod("plot",signature=c(x="clusterfit",y="missing"),
   })
   ggplot(dfsumm,aes(col=as.factor(1:nrow(dfsumm)))) +
               geom_point(data=groups,
-                         aes(x=theta,y=LRR,col=as.factor(best.group)),size=0.1) +
+                         aes(x=theta,y=LRR,col=as.factor(best.group)),size=0.5) +
     geom_point(aes(x=theta.mean,y=R.mean)) +
       geom_segment(aes(x=theta.low,xend=theta.high,y=R.mean,yend=R.mean),alpha=0.5,
                    arrow=arrow(length = unit(0.1,"cm"), angle=90, ends="both"))  +
     geom_segment(aes(x=theta.mean,xend=theta.mean,y=R.low,yend=R.high),alpha=0.5,lineend="round",
                  arrow=arrow(length = unit(0.1,"cm"), angle=90, ends="both")) +
-     geom_text(aes(x=theta.mean,y=R.mean,label=label),col="black")
+     geom_text(aes(x=theta.mean,y=R.mean,label=label),col="black") +
+       theme(legend.position="none")
           })
               
   

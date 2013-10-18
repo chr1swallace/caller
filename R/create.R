@@ -20,7 +20,8 @@
 ##' @author Chris Wallace
 clusterdef.ncopies <- function(n,
                                R.mean=c("0"=-3.527211,"1"=-0.664184,"2"=0.000000,"3"=0.395621,"4"=0.678345),
-                               R.sd=c("0"=1.329152 ,"1"=0.284338,"2"= 0.159645,"3"= 0.209089,"4"= 0.191579),
+                               R.sd=c("0"=0.5 ,"1"=0.284338,"2"= 0.159645,"3"= 0.209089,"4"= 0.191579),
+                               # NB reduced first R.sd from 1.329152 -> 0.5
                                eps=1e-2) {
 ## find all combinations of a1, a2 st 0 <= ai <= n and a1+a2 <= n
   a1 <- a2 <- 0:n
