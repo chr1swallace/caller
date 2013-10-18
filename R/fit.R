@@ -32,6 +32,22 @@ beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=TRUE,maxit=1e4, eps=1e-2, u
   
   ## define lots of functions within this function to use dfsumm environment  
   ## vectors of a, b
+parvec <- function(pars,index=TRUE) {
+  a <- pars[grep("^a",names(pars))]
+  b <- pars[grep("^b",names(pars))]
+  mu <- pars[grep("^mu",names(pars))]
+  sigma <- pars[grep("^sigma",names(pars))]
+  if(index) {
+    a <- a[dfsumm$theta.index]
+    b <- b[dfsumm$theta.index]
+    mu <- mu[dfsumm$R.index]
+    sigma <- sigma[dfsumm$R.index]
+    a[ dfsumm$copies==0 ] <- b[ dfsumm$copies==0 ] <- 1
+  }
+  tm <- beta.mn(a,b)
+  ts <- beta.sd(a,b)
+  return(list(theta.mean=tm,theta.sd=ts,a=a,b=b,mu=mu,sigma=sigma))
+}
   abvec <- function(pars,index=TRUE) {
     a <- pars[grep("a",names(pars))]
     b <- pars[grep("b",names(pars))]
@@ -126,7 +142,7 @@ beta.em <- function(df.in,theta,lrr,tol=1e-2,verbose=TRUE,maxit=1e4, eps=1e-2, u
   
   nit <- 0
   df <- 1
-  cols <- brewer.pal(ngroup, "Paired")
+#  cols <- brewer.pal(ngroup, "Paired")
                                         #  hwe <- ngroup>1
   hwe <- FALSE
   value <- numeric(maxit)

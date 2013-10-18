@@ -1,9 +1,10 @@
-\name{beta.em}
-\alias{beta.em}
-\title{beta.em}
+\name{fit.em}
+\alias{fit.em}
+\title{fit.em}
 \usage{
-  beta.em(df.in, theta, lrr, tol = 0.01, verbose = TRUE,
-    maxit = 10000, eps = 0.01, use.deriv = FALSE)
+  fit.em(df.in, theta, lrr, tol = 0.01, verbose = TRUE,
+    maxit = 10000, eps = 0.01, use.deriv = TRUE,
+    max.lrr = TRUE)
 }
 \arguments{
   \item{df.in}{clusterdef object}
@@ -26,6 +27,9 @@
   \item{use.deriv}{if TRUE, use gradients to optimize
   quicker.  Currently off by default because it DOESN'T
   WORK!}
+
+  \item{max.lrr}{ignored, in future will allow maximization
+  in theta only}
 }
 \value{
   a clusterfit object

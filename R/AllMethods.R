@@ -40,27 +40,45 @@ setMethod("show","clusterfit",
           })
                              
                              
-setMethod("plot","clusterdef",
+setMethod("plot",signature=c(x="clusterdef", y="missing"),
           definition=function(x,y) {
-            dfsumm <- summary(x)
-            dfsumm <- within(dfsumm, {
-              theta.low <- qbeta(0.025, theta.a, theta.b)
-              theta.high <- qbeta(0.975, theta.a, theta.b)
-              R.low <- qnorm(0.025,R.mean,R.sd)
-              R.high <- qnorm(0.975,R.mean,R.sd)              
-            })
-            ggplot(dfsumm,aes(col=as.factor(1:nrow(dfsumm)))) +
-              geom_point(aes(x=theta.mean,y=R.mean)) +
-                geom_segment(aes(x=theta.low,xend=theta.high,y=R.mean,yend=R.mean),alpha=0.5,
-                             arrow=arrow(length = unit(0.1,"cm"), angle=90, ends="both")) +
-                geom_segment(aes(x=theta.mean,xend=theta.mean,y=R.low,yend=R.high),alpha=0.5,lineend="round",
-                             arrow=arrow(length = unit(0.1,"cm"), angle=90, ends="both"))
-          })
+  dfsumm <- summary(x)
+  dfsumm <- within(dfsumm, {
+    theta.low <- qbeta(0.025, theta.a, theta.b)
+    theta.high <- qbeta(0.975, theta.a, theta.b)
+    R.low <- qnorm(0.025,R.mean,R.sd)
+    R.high <- qnorm(0.975,R.mean,R.sd)
+    label <- paste(a1,a2,sep="-")
+  })
+  ggplot(dfsumm,aes(col=as.factor(1:nrow(dfsumm)))) +
+    geom_point(aes(x=theta.mean,y=R.mean)) +
+      geom_segment(aes(x=theta.low,xend=theta.high,y=R.mean,yend=R.mean),alpha=0.5,
+                   arrow=arrow(length = unit(0.1,"cm"), angle=90, ends="both"))  +
+    geom_segment(aes(x=theta.mean,xend=theta.mean,y=R.low,yend=R.high),alpha=0.5,lineend="round",
+                 arrow=arrow(length = unit(0.1,"cm"), angle=90, ends="both")) +
+     geom_text(aes(x=theta.mean,y=R.mean,label=label),col="black")
+})
               
-setMethod("plot","clusterfit",
+setMethod("plot",signature=c(x="clusterfit",y="missing"),
           definition=function(x,y) {
             groups <- summary(x)
-            plot(x@clusters) + geom_point(data=groups, aes(x=theta,y=LRR,col=as.factor(best.group)),size=0.1)
+  dfsumm <- summary(x@clusters)
+  dfsumm <- within(dfsumm, {
+    theta.low <- qbeta(0.025, theta.a, theta.b)
+    theta.high <- qbeta(0.975, theta.a, theta.b)
+    R.low <- qnorm(0.025,R.mean,R.sd)
+    R.high <- qnorm(0.975,R.mean,R.sd)
+    label <- paste(a1,a2,sep="-")
+  })
+  ggplot(dfsumm,aes(col=as.factor(1:nrow(dfsumm)))) +
+              geom_point(data=groups,
+                         aes(x=theta,y=LRR,col=as.factor(best.group)),size=0.1) +
+    geom_point(aes(x=theta.mean,y=R.mean)) +
+      geom_segment(aes(x=theta.low,xend=theta.high,y=R.mean,yend=R.mean),alpha=0.5,
+                   arrow=arrow(length = unit(0.1,"cm"), angle=90, ends="both"))  +
+    geom_segment(aes(x=theta.mean,xend=theta.mean,y=R.low,yend=R.high),alpha=0.5,lineend="round",
+                 arrow=arrow(length = unit(0.1,"cm"), angle=90, ends="both")) +
+     geom_text(aes(x=theta.mean,y=R.mean,label=label),col="black")
           })
               
   

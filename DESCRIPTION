@@ -16,5 +16,4 @@ Collate:
     'create.R'
     'fit.R'
     'utilities.R'
-    'mix-betabinomial.R'
-    'mix-common.R'
+    'fitboth.R'

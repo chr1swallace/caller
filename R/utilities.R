@@ -51,37 +51,16 @@ getab.beta <- function(mu,sigma) {
   ##     cat("var.obs=",sigma^2,"var.ab=",alpha*beta/((alpha+beta)^2 * (alpha+beta+1)),"\n")
   list(alpha=alpha,beta=beta)
 }
-parvec <- function(pars,index=TRUE) {
-  a <- pars[grep("^a",names(pars))]
-  b <- pars[grep("^b",names(pars))]
-  mu <- pars[grep("^mu",names(pars))]
-  sigma <- pars[grep("^sigma",names(pars))]
-  if(index) {
-    a <- a[dfsumm$theta.index]
-    b <- b[dfsumm$theta.index]
-    mu <- mu[dfsumm$R.index]
-    sigma <- sigma[dfsumm$R.index]
-    a[ dfsumm$copies==0 ] <- b[ dfsumm$copies==0 ] <- 1
-  }
-  tm <- beta.mn(a,b)
-  ts <- beta.sd(a,b)
-  return(list(theta.mean=tm,theta.sd=ts,a=a,b=b,mu=mu,sigma=sigma))
-}
-  
-pars.fail <- function(pars) {
-  parv <- parvec(pars, index=FALSE)
-  if(!identical(order(parv$theta.mean),seq_along(parv$theta.mean)))
-    return(TRUE)
-  if("mu" %in% names(parv) && !identical(order(parv$mu),seq_along(parv$mu)))
-    return(TRUE)
-  if(any(parv$a < 0 | parv$b < 0))
-    return(TRUE)
-  if(any(parv$theta.sd>0.1)) # keep theta clusters tight
-    return(TRUE)
+
+## parvec.noindex <- function(pars) {
+##     a <- pars[grep("^a",names(pars))]
+##     b <- pars[grep("^b",names(pars))]
+##     mu <- pars[grep("^mu",names(pars))]
+##     sigma <- pars[grep("^sigma",names(pars))]
+##     tm <- beta.mn(a,b)
+##     ts <- beta.sd(a,b)
+##     return(list(theta.mean=tm,theta.sd=ts,a=a,b=b,mu=mu,sigma=sigma))
+##   }
 
 
-  ## could a kmeans derived starting value help?
-  
-  return(FALSE)
-}
-    
+

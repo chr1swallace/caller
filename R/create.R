@@ -32,20 +32,25 @@ clusterdef.ncopies <- function(n,
   tmn[ tmn==0 ] <- eps
   tmn[ tmn==1 ] <- 1-eps
   tsd <- rep(0.01,nrow(df))
-  tsd[ df$a1==0 & df$a2==0 ] <- 0.2886866
+  tsd[ df$a1==0 & df$a2==0 ] <- sqrt(1/12)
   ab <- getab.beta(tmn,tsd)
 
   ## index theta parameters, setting NA for 0 copies
   ti <- df$a1/df$a2
- # ti[ df$a1==0 & df$a2==0 ] <- NA
-  theta.index <- as.numeric(as.factor(ti))
-
   ## sort ab so that theta.index corresponds to correct value
+  theta.index <- as.numeric(as.factor(ti))
   wh <- which(!duplicated(theta.index))
-  a <- ab$alpha[wh][ order(theta.index[wh]) ]
-  b <- ab$beta[wh][ order(theta.index[wh]) ]
+  a <- structure(ab$alpha[wh][ order(theta.index[wh]) ],names=sort(theta.index[wh]))
+  b <- structure(ab$beta[wh][ order(theta.index[wh]) ],names=sort(theta.index[wh]))
   topt <- ifelse(df$a1==0 & df$a2==0, FALSE, TRUE)[wh][ order(theta.index[wh]) ]
-  R.index <- pmin(as.numeric(as.factor(ncopies)),4)
+
+  ## index R parameters, setting NA for 0 copies
+  R.index <- pmin(ncopies,4) + 1
+#  R.index[ ncopies==0 ] <- max(R.index) + 1
+  wh <- which(!duplicated(R.index))
+  m <- structure(R.mean[R.index[wh]][ order(R.index[wh]) ],names=sort(R.index[wh]))
+  s <- structure(R.sd[R.index[wh]][ order(R.index[wh]) ],names=sort(R.index[wh]))
+  ropt <- ifelse(df$a1==0 & df$a2==0, FALSE, TRUE)[wh][ order(R.index[wh]) ]
   
   new("clusterdef",
       a1=df$a1,
@@ -53,10 +58,39 @@ clusterdef.ncopies <- function(n,
       pi=rep(1/nrow(df), nrow(df)),
       R.index=R.index,
       theta.index=theta.index,
-      R.mean=R.mean[ as.character(unique(sort(R.index)) - 1) ],
-      R.sd=R.sd[ as.character(unique(sort(R.index)) - 1) ],
+      R.mean=m,
+      R.sd=s,
       theta.a=a,
       theta.b=b,
-      R.opt=rep(FALSE,length(R.mean)),
+      R.opt=ropt,
       theta.opt=topt)
+}
+
+
+initialize <- function(clusters,theta,lrr) {
+
+  tmn <- beta.mn(clusters@theta.a[ clusters@theta.opt ], clusters@theta.b[ clusters@theta.opt ])
+  tsd <- beta.sd(clusters@theta.a[ clusters@theta.opt ], clusters@theta.b[ clusters@theta.opt ])
+
+  ## recenter middle clusters
+  nmid <- length(clusters@theta.a[ clusters@theta.opt ]) - 2
+  km <- kmeans(theta[ theta>0.15 & theta<0.85 ], nmid)
+  wh <- 1 + (1:nmid)
+  tmn[ wh ] <- sort(km$centers)
+  tsd[ wh ] <- tapply(theta[ theta>0.15 & theta<0.85 ],km$cluster,sd)[order(km$centers)]
+
+  ## add outside clusters
+  tmn[ 1 ] <- mean(theta [ theta < 0.1 ])
+  tsd[ 1 ] <- sd(theta [ theta < 0.1 ])
+  n <- length(tmn)
+  tmn[ n ] <- mean(theta [ theta > 0.9 ])
+  tsd[ n ] <- sd(theta [ theta > 0.9 ])
+  
+  ## put it back in clusters
+  ab <- getab.beta(tmn,tsd)
+  clusters@theta.a[ clusters@theta.opt ] <- ab$alpha
+  clusters@theta.b[ clusters@theta.opt ] <- ab$beta
+
+  clusters
+  
 }
